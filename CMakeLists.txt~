@@ -7,9 +7,9 @@ set(CMAKE_AUTOMOC ON)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-# set(Qt6_DIR H:/Qt/6.10.2/msvc2022_64/lib/cmake/Qt6)
+set(Qt6_DIR H:/Qt/6.10.2/msvc2022_64/lib/cmake/Qt6)
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
-# set(OpenCV_DIR F:/core/opencv/build/x64/vc16/lib)
+set(OpenCV_DIR F:/core/opencv/build/x64/vc16/lib)
 find_package(OpenCV REQUIRED)
 
 add_executable(calib_tool
