@@ -373,6 +373,15 @@ void MainWindow::onPointSelected(ControlPoint *point)
 void MainWindow::onPointDoubleClicked(ControlPoint *point)
 {
     static MagnifierPopup *popup = new MagnifierPopup(this);
+    static bool connected = false;
+    if (!connected) {
+        connect(popup, &MagnifierPopup::pointIdCommitted, this, [this](ControlPoint *committedPoint) {
+            Q_UNUSED(committedPoint);
+            updateTable();
+            updateCalibData();
+        });
+        connected = true;
+    }
     popup->showAtPoint(point, m_imageItem->pixmap());
 }
 

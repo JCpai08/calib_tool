@@ -22,6 +22,9 @@ public:
 
     void showAtPoint(ControlPoint *point, const QPixmap &sourcePixmap);
 
+signals:
+    void pointIdCommitted(ControlPoint *point);
+
 protected:
     void mousePressEvent(QMouseEvent *event) override;
     void mouseMoveEvent(QMouseEvent *event) override;

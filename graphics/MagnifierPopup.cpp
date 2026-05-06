@@ -83,22 +83,36 @@ void MagnifierPopup::showAtPoint(ControlPoint *point, const QPixmap &sourcePixma
     int screenX = static_cast<int>(m_point->pos().x());
     int screenY = static_cast<int>(m_point->pos().y());
 
-    QList<QScreen*> screens = QGuiApplication::screens();
-    QScreen *primaryScreen = QGuiApplication::primaryScreen();
-    if (primaryScreen) {
-        QRect screenGeom = primaryScreen->geometry();
-        int popupX = screenX + 50;
-        int popupY = screenY - m_viewSize / 2;
+    // 1. 必须获取“当前点击点”所在的屏幕，而不是主屏幕
+    QPoint globalPos = point->pos().toPoint(); // 确保这是全局坐标，如果不是请 mapToGlobal
+    QScreen *targetScreen = QGuiApplication::screenAt(globalPos);
+    if (!targetScreen) targetScreen = QGuiApplication::primaryScreen();
 
-        if (popupX + width() > screenGeom.right()) {
-            popupX = screenX - width() - 50;
-        }
-        if (popupY < screenGeom.top()) {
-            popupY = screenGeom.top() + 10;
-        }
-        if (popupY + height() > screenGeom.bottom()) {
-            popupY = screenGeom.bottom() - height() - 10;
-        }
+    if (targetScreen) {
+        QRect screenGeom = targetScreen->geometry();
+        int margin = 20; 
+
+        int popupX = screenGeom.right() - this->width() - margin;
+        int popupY = screenGeom.top() + margin;
+        // 2. 初始尝试在右侧显示
+        // int popupX = globalPos.x() + 50;
+        // int popupY = globalPos.y() - m_viewSize / 2;
+        // 3. 检查右边界：如果右侧放不下，就弹到左侧
+        // 注意：width() 在窗口还没 show 之前可能不准确，建议给个预估值或提前 adjustSize()
+        // if (popupX + this->width() > screenGeom.right()) {
+        //     popupX = globalPos.x() - this->width() - 50;
+        // }
+        // // 4. 检查左边界：防止反向弹射后又超出了左边缘
+        // if (popupX < screenGeom.left()) {
+        //     popupX = screenGeom.left() + 10;
+        // }
+        // // 5. 检查上下边界
+        // if (popupY < screenGeom.top()) {
+        //     popupY = screenGeom.top() + 10;
+        // }
+        // if (popupY + this->height() > screenGeom.bottom()) {
+        //     popupY = screenGeom.bottom() - this->height() - 10;
+        // }
 
         move(popupX, popupY);
     }
@@ -106,6 +120,7 @@ void MagnifierPopup::showAtPoint(ControlPoint *point, const QPixmap &sourcePixma
     show();
     raise();
     setFocus();
+    m_idEdit.clearFocus();
 
     updateMagnifier();
 }
@@ -126,6 +141,13 @@ bool MagnifierPopup::eventFilter(QObject *obj, QEvent *event)
 
 void MagnifierPopup::keyPressEvent(QKeyEvent *event)
 {
+    if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) && !m_idEdit.hasFocus()) {
+        m_idEdit.setFocus(Qt::ShortcutFocusReason);
+        m_idEdit.selectAll();
+        event->accept();
+        return;
+    }
+
     qreal step = 1.0;
     if (event->modifiers() & Qt::ShiftModifier) {
         step = 5.0;
@@ -217,6 +239,8 @@ void MagnifierPopup::onIdEditingFinished()
         int id = m_idEdit.text().toInt(&ok);
         if (ok && id > 0) {
             m_point->setId(id);
+            emit pointIdCommitted(m_point);
+            hide();
         } else {
             m_point->setId(-1);
             m_idEdit.setText("");

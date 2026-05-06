@@ -26,7 +26,7 @@ make
 
 - C++17 standard
 - Qt6 `Q_OBJECT` macros require moc (handled by CMake AUTOMOC)
-- Point double-click clears, single-click selects
+- Point single-click selects
 - Export formats: YAML (.yml), CSV
 
 ## No Tests

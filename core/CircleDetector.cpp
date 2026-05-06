@@ -306,8 +306,8 @@ std::vector<CirclePoint> CircleDetector::detect(const cv::Mat &image)
         }
     }
 
-    std::vector<CirclePoint> merged = mergeCloseMarkers(filtered);
-
+    // std::vector<CirclePoint> merged = mergeCloseMarkers(filtered);
+    std::vector<CirclePoint> merged = std::move(markers);
     if (m_config.useEllipseRefinement) {
         std::vector<CirclePoint> refined;
         for (auto &marker : merged) {
