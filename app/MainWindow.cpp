@@ -17,6 +17,7 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QSpinBox>
+#include <QFileInfo>
 
 #include <opencv2/imgcodecs.hpp>
 
@@ -75,6 +76,9 @@ void MainWindow::createActions()
     m_openImageAction = new QAction(tr("Open Image..."), this);
     m_openImageAction->setShortcut(QKeySequence::Open);
     m_openImageAction->setStatusTip(tr("Open an image file"));
+
+    m_importPointsAction = new QAction(tr("Import Points..."), this);
+    m_importPointsAction->setStatusTip(tr("Import control points from YAML or CSV"));
 
     m_exportYamlAction = new QAction(tr("Export YAML..."), this);
     m_exportYamlAction->setShortcut(QKeySequence::Save);
@@ -135,6 +139,8 @@ void MainWindow::createMenus()
     QMenu *fileMenu = menuBar()->addMenu(tr("File"));
     fileMenu->addAction(m_openImageAction);
     fileMenu->addSeparator();
+    fileMenu->addAction(m_importPointsAction);
+    fileMenu->addSeparator();
     fileMenu->addAction(m_exportYamlAction);
     fileMenu->addAction(m_exportCsvAction);
     fileMenu->addSeparator();
@@ -162,6 +168,7 @@ void MainWindow::createToolbars()
 {
     QToolBar *toolbar = addToolBar(tr("Main"));
     toolbar->addAction(m_openImageAction);
+    toolbar->addAction(m_importPointsAction);
     toolbar->addSeparator();
     toolbar->addAction(m_autoDetectAction);
 
@@ -201,6 +208,7 @@ void MainWindow::createToolbars()
 void MainWindow::setupConnections()
 {
     connect(m_openImageAction, &QAction::triggered, this, &MainWindow::onOpenImage);
+    connect(m_importPointsAction, &QAction::triggered, this, &MainWindow::onImportPoints);
     connect(m_exportYamlAction, &QAction::triggered, this, &MainWindow::onExportYaml);
     connect(m_exportCsvAction, &QAction::triggered, this, &MainWindow::onExportCsv);
     connect(m_clearPointsAction, &QAction::triggered, this, &MainWindow::onClearPoints);
@@ -219,6 +227,20 @@ void MainWindow::setupConnections()
     connect(m_scene, &ControlPointScene::pointDoubleClicked, this, &MainWindow::onPointDoubleClicked);
     connect(m_scene, &ControlPointScene::pointAdded, this, &MainWindow::onPointAdded);
     connect(m_scene, &ControlPointScene::pointRemoved, this, &MainWindow::onPointRemoved);
+    connect(m_scene, &ControlPointScene::pointIdChanged, this, [this](ControlPoint *point) {
+        updateTable();
+        updateCalibData();
+        selectTableRow(point);
+        statusBar()->showMessage(tr("Point ID set to %1").arg(point->id()));
+    });
+    connect(m_scene, &ControlPointScene::pointIdInputChanged, this, [this](ControlPoint *point, const QString &text) {
+        Q_UNUSED(point);
+        if (text.isEmpty()) {
+            updateStatusBar();
+        } else {
+            statusBar()->showMessage(tr("Point ID input: %1 (press Enter to confirm)").arg(text));
+        }
+    });
     connect(m_scene, &ControlPointScene::roiSelected, this, [this](const QRectF &rect) {
         m_currentRoi = rect.toRect();
         m_scene->setRoiRect(rect);
@@ -228,7 +250,8 @@ void MainWindow::setupConnections()
         updateStatusBar();
     });
 
-    connect(m_tableWidget, &QTableWidget::cellChanged, this, &MainWindow::onPointIdChanged);
+    connect(m_tableWidget, QOverload<int, int>::of(&QTableWidget::cellChanged), 
+            this, &MainWindow::onTableCellChanged);
     connect(m_tableWidget, &QTableWidget::itemSelectionChanged, this, &MainWindow::onTableSelectionChanged);
 
     connect(m_view, &ZoomableView::zoomChanged, this, &MainWindow::updateStatusBar);
@@ -265,6 +288,63 @@ void MainWindow::onOpenImage()
         .arg(filePath)
         .arg(m_imageItem->pixmap().width())
         .arg(m_imageItem->pixmap().height()));
+}
+
+void MainWindow::onImportPoints()
+{
+    QString filePath = QFileDialog::getOpenFileName(
+        this, tr("Import Points"), QString(),
+        tr("Point files (*.yaml *.yml *.csv);;YAML files (*.yaml *.yml);;CSV files (*.csv)"));
+
+    if (filePath.isEmpty()) {
+        return;
+    }
+
+    if (!m_scene->controlPoints().isEmpty()) {
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            this, tr("Import Points"),
+            tr("Importing points will replace the current control points. Continue?"),
+            QMessageBox::Yes | QMessageBox::No);
+
+        if (reply != QMessageBox::Yes) {
+            return;
+        }
+    }
+
+    CalibrationData importedData;
+    const QString suffix = QFileInfo(filePath).suffix().toLower();
+    bool ok = false;
+    if (suffix == "csv") {
+        ok = importedData.importCsv(filePath);
+    } else if (suffix == "yaml" || suffix == "yml") {
+        ok = importedData.importYaml(filePath);
+    }
+
+    if (!ok) {
+        QMessageBox::warning(this, tr("Import Points"), tr("Failed to import points from the selected file."));
+        return;
+    }
+
+    if (importedData.imageWidth() <= 0 || importedData.imageHeight() <= 0) {
+        importedData.setImageSize(m_calibData.imageWidth(), m_calibData.imageHeight());
+    }
+
+    m_scene->clearControlPoints();
+    for (const CalibrationPoint &point : importedData.points()) {
+        ControlPoint *cp = m_scene->addControlPoint(QPointF(point.x, point.y));
+        cp->setId(point.id);
+        cp->setConfidence(0.0);
+    }
+    m_scene->clearSelection();
+
+    m_calibData = importedData;
+    updateTable();
+
+    const int count = importedData.pointCount();
+    m_clearPointsAction->setEnabled(count > 0);
+    m_exportYamlAction->setEnabled(count > 0);
+    m_exportCsvAction->setEnabled(count > 0);
+    statusBar()->showMessage(tr("Imported %1 points").arg(count));
 }
 
 void MainWindow::onExportYaml()
@@ -380,6 +460,12 @@ void MainWindow::onPointDoubleClicked(ControlPoint *point)
             updateTable();
             updateCalibData();
         });
+        connect(popup, &MagnifierPopup::pointPositionCommitted, this, [this](ControlPoint *committedPoint) {
+            updateTable();
+            updateCalibData();
+            selectTableRow(committedPoint);
+            updatePreview(committedPoint);
+        });
         connected = true;
     }
     popup->showAtPoint(point, m_imageItem->pixmap());
@@ -395,22 +481,42 @@ void MainWindow::onPointRemoved(ControlPoint *point)
     updateTable();
 }
 
-void MainWindow::onPointIdChanged(int row, int id)
+void MainWindow::onTableCellChanged(int row, int column)
 {
-    if (row >= 0 && row < m_scene->controlPoints().size()) {
-        QList<ControlPoint *> points = m_scene->controlPoints();
-        if (row < points.size()) {
-            points[row]->setId(id);
-            m_calibData.clear();
-            for (ControlPoint *cp : points) {
-                if (cp->hasId()) {
-                    m_calibData.addPoint(cp->id(), cp->pos().x(), cp->pos().y());
-                }
-            }
-        }
+    // Only handle ID column (column 0) changes
+    if (column != 0) {
+        return;
     }
-}
 
+    QTableWidgetItem *item = m_tableWidget->item(row, 0);
+    if (!item) {
+        return;
+    }
+
+    ControlPoint *point = static_cast<ControlPoint*>(item->data(Qt::UserRole).value<void*>());
+    if (!point) {
+        return;
+    }
+
+    // Parse the ID value from the cell text
+    bool ok;
+    int newId = item->text().toInt(&ok);
+    
+    // Validate: ID must be positive
+    if (!ok || newId <= 0) {
+        point->setId(-1);
+        updateCalibData();
+        updateTable();
+        return;
+    }
+
+    // Apply the ID to the point
+    point->setId(newId);
+
+    // Update calibration data and keep the table aligned with the scene order.
+    updateCalibData();
+    updateTable();
+}
 void MainWindow::onTableSelectionChanged()
 {
     int currentRow = m_tableWidget->currentRow();

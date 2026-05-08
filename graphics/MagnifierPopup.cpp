@@ -175,6 +175,7 @@ void MagnifierPopup::keyPressEvent(QKeyEvent *event)
         case Qt::Key_Enter:
             if (m_point) {
                 m_point->setPos(m_crosshairPos);
+                emit pointPositionCommitted(m_point);
             }
             hide();
             return;
@@ -226,6 +227,7 @@ void MagnifierPopup::mouseReleaseEvent(QMouseEvent *event)
     if (event->button() == Qt::LeftButton) {
         if (m_isDragging && m_point) {
             m_point->setPos(m_crosshairPos);
+            emit pointPositionCommitted(m_point);
         }
         m_isDragging = false;
     }

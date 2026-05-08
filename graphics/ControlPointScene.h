@@ -4,6 +4,7 @@
 #include <QGraphicsScene>
 #include <QList>
 #include <QPointF>
+#include <QString>
 
 class ControlPoint;
 class ImageItem;
@@ -40,6 +41,7 @@ signals:
     void pointRemoved(ControlPoint *point);
     void pointDoubleClicked(ControlPoint *point);
     void pointIdChanged(ControlPoint *point);
+    void pointIdInputChanged(ControlPoint *point, const QString &text);
     void pointPositionChanged(ControlPoint *point);
     void roiSelected(const QRectF &rect);
 
@@ -59,10 +61,13 @@ private:
     bool m_isSelectingRoi = false;
     bool m_roiSelectionMode = false;
     QRectF m_currentRoiRect;
+    QString m_pendingIdText;
 
     void drawRoiRectangle(QPainter *painter, const QRectF &rect);
     void highlightPointsInRoi();
     void clearRoiPointHighlight();
+    void clearPendingIdInput();
+    void commitPendingIdInput();
 };
 
 #endif // CONTROLPOINTSCENE_H

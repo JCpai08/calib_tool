@@ -100,6 +100,7 @@ protected:
 
 private slots:
     void onOpenImage();
+    void onImportPoints();
     void onExportYaml();
     void onExportCsv();
     void onClearPoints();
@@ -110,7 +111,7 @@ private slots:
     void onPointDoubleClicked(ControlPoint *point);
     void onPointAdded(ControlPoint *point);
     void onPointRemoved(ControlPoint *point);
-    void onPointIdChanged(int row, int id);
+    void onTableCellChanged(int row, int column);
     void onTableSelectionChanged();
     void onDetectInRoi();
     void onDeleteRoiPoints();
@@ -145,6 +146,7 @@ private:
     QRect m_currentRoi;
 
     QAction *m_openImageAction = nullptr;
+    QAction *m_importPointsAction = nullptr;
     QAction *m_exportYamlAction = nullptr;
     QAction *m_exportCsvAction = nullptr;
     QAction *m_clearPointsAction = nullptr;

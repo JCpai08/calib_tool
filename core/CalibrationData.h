@@ -25,6 +25,8 @@ public:
 
     bool exportYaml(const QString &filePath) const;
     bool exportCsv(const QString &filePath) const;
+    bool importYaml(const QString &filePath);
+    bool importCsv(const QString &filePath);
 
     int pointCount() const { return static_cast<int>(m_points.size()); }
 

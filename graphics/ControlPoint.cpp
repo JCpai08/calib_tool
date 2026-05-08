@@ -14,6 +14,17 @@ ControlPoint::ControlPoint(const QPointF &pos, QGraphicsItem *parent)
     : ControlPoint(pos.x(), pos.y(), parent)
 {}
 
+void ControlPoint::setId(int id)
+{
+    if (m_id == id) {
+        return;
+    }
+
+    prepareGeometryChange();
+    m_id = id;
+    update();
+}
+
 void ControlPoint::setState(State state)
 {
     if (m_state != state) {
@@ -32,8 +43,14 @@ void ControlPoint::setRadius(qreal r)
 QRectF ControlPoint::boundingRect() const
 {
     qreal penWidth = 2.0;
-    return QRectF(-m_radius - penWidth, -m_radius - penWidth,
-                 m_radius * 2 + penWidth * 2, m_radius * 2 + penWidth * 2);
+    QRectF rect(-m_radius - penWidth, -m_radius - penWidth,
+                m_radius * 2 + penWidth * 2, m_radius * 2 + penWidth * 2);
+    if (m_id > 0) {
+        const int digits = QString::number(m_id).size();
+        const qreal textWidth = qMax<qreal>(14.0, digits * 7.0);
+        rect = rect.united(QRectF(m_radius + 2, -m_radius - 14, textWidth, 14));
+    }
+    return rect;
 }
 
 QPainterPath ControlPoint::shape() const

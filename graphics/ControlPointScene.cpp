@@ -40,9 +40,11 @@ void ControlPointScene::setSelectedPoint(ControlPoint *point)
     if (m_selectedPoint) {
         m_selectedPoint->setState(ControlPoint::Normal);
     }
+    clearPendingIdInput();
     m_selectedPoint = point;
     if (point) {
         point->setState(ControlPoint::Selected);
+        point->setFocus();
         emit pointSelected(point);
     }
 }
@@ -62,6 +64,7 @@ void ControlPointScene::removeControlPoint(ControlPoint *point)
         removeItem(point);
         if (m_selectedPoint == point) {
             m_selectedPoint = nullptr;
+            clearPendingIdInput();
         }
         emit pointRemoved(point);
         delete point;
@@ -76,6 +79,7 @@ void ControlPointScene::clearControlPoints()
         delete point;
     }
     m_selectedPoint = nullptr;
+    clearPendingIdInput();
 }
 
 QList<ControlPoint *> ControlPointScene::pointsInRect(const QRectF &rect) const
@@ -222,16 +226,50 @@ void ControlPointScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
 void ControlPointScene::keyPressEvent(QKeyEvent *event)
 {
     if (event->key() == Qt::Key_Delete || event->key() == Qt::Key_Backspace) {
-        if (m_selectedPoint) {
+        if (!m_pendingIdText.isEmpty()) {
+            m_pendingIdText.chop(1);
+            emit pointIdInputChanged(m_selectedPoint, m_pendingIdText);
+        } else if (m_selectedPoint) {
             removeControlPoint(m_selectedPoint);
         }
     } else if (event->key() >= Qt::Key_0 && event->key() <= Qt::Key_9) {
         if (m_selectedPoint) {
-            int id = event->key() - Qt::Key_0;
-            if (id == 0) id = 10;
-            m_selectedPoint->setId(id);
+            m_pendingIdText.append(event->text());
+            emit pointIdInputChanged(m_selectedPoint, m_pendingIdText);
         }
+    } else if (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) {
+        commitPendingIdInput();
+    } else if (event->key() == Qt::Key_Escape) {
+        clearPendingIdInput();
     } else {
         QGraphicsScene::keyPressEvent(event);
+    }
+}
+
+void ControlPointScene::clearPendingIdInput()
+{
+    if (m_pendingIdText.isEmpty()) {
+        return;
+    }
+
+    ControlPoint *point = m_selectedPoint;
+    m_pendingIdText.clear();
+    emit pointIdInputChanged(point, m_pendingIdText);
+}
+
+void ControlPointScene::commitPendingIdInput()
+{
+    if (!m_selectedPoint || m_pendingIdText.isEmpty()) {
+        return;
+    }
+
+    bool ok = false;
+    int id = m_pendingIdText.toInt(&ok);
+    ControlPoint *point = m_selectedPoint;
+    clearPendingIdInput();
+
+    if (ok && id > 0) {
+        point->setId(id);
+        emit pointIdChanged(point);
     }
 }

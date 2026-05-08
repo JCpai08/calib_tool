@@ -15,7 +15,7 @@ public:
     explicit ControlPoint(const QPointF &pos, QGraphicsItem *parent = nullptr);
 
     int id() const { return m_id; }
-    void setId(int id) { m_id = id; update(); }
+    void setId(int id);
 
     bool hasId() const { return m_id > 0; }
 

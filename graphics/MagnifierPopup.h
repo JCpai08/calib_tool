@@ -24,6 +24,7 @@ public:
 
 signals:
     void pointIdCommitted(ControlPoint *point);
+    void pointPositionCommitted(ControlPoint *point);
 
 protected:
     void mousePressEvent(QMouseEvent *event) override;
