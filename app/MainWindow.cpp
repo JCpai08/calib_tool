@@ -18,6 +18,7 @@
 #include <QVBoxLayout>
 #include <QSpinBox>
 #include <QFileInfo>
+#include <QTimer>
 
 #include <opencv2/imgcodecs.hpp>
 
@@ -37,6 +38,7 @@ MainWindow::~MainWindow()
 void MainWindow::setupUi()
 {
     m_view = new ZoomableView(this);
+    m_view->setMinimumSize(480, 360);
     m_scene = new ControlPointScene(this);
     m_view->setScene(m_scene);
 
@@ -66,6 +68,7 @@ void MainWindow::setupUi()
     m_splitter->addWidget(m_rightSplitter);
     m_splitter->setStretchFactor(0, 3);
     m_splitter->setStretchFactor(1, 1);
+    m_splitter->setSizes({960, 320});
 
     setCentralWidget(m_splitter);
     statusBar()->showMessage("Ready");
@@ -270,8 +273,17 @@ void MainWindow::onOpenImage()
     m_currentFilePath = filePath;
     m_imageItem->setImage(filePath);
     m_imageItem->setVisible(true);
+    m_scene->setSceneRect(m_imageItem->boundingRect());
+    m_scene->update();
 
     m_view->fitInView();
+    QTimer::singleShot(0, this, [this]() {
+        if (m_view->width() < 480) {
+            m_splitter->setSizes({960, 320});
+        }
+        m_view->fitInView();
+        m_view->viewport()->update();
+    });
     m_autoDetectAction->setEnabled(true);
     m_showConfigAction->setEnabled(true);
     m_selectRoiAction->setEnabled(true);

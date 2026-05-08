@@ -173,10 +173,7 @@ void MagnifierPopup::keyPressEvent(QKeyEvent *event)
             break;
         case Qt::Key_Return:
         case Qt::Key_Enter:
-            if (m_point) {
-                m_point->setPos(m_crosshairPos);
-                emit pointPositionCommitted(m_point);
-            }
+            commitCurrentPosition();
             hide();
             return;
         case Qt::Key_Escape:
@@ -226,8 +223,7 @@ void MagnifierPopup::mouseReleaseEvent(QMouseEvent *event)
 {
     if (event->button() == Qt::LeftButton) {
         if (m_isDragging && m_point) {
-            m_point->setPos(m_crosshairPos);
-            emit pointPositionCommitted(m_point);
+            commitCurrentPosition();
         }
         m_isDragging = false;
     }
@@ -237,6 +233,8 @@ void MagnifierPopup::mouseReleaseEvent(QMouseEvent *event)
 void MagnifierPopup::onIdEditingFinished()
 {
     if (m_point) {
+        commitCurrentPosition();
+
         bool ok;
         int id = m_idEdit.text().toInt(&ok);
         if (ok && id > 0) {
@@ -248,6 +246,16 @@ void MagnifierPopup::onIdEditingFinished()
             m_idEdit.setText("");
         }
     }
+}
+
+void MagnifierPopup::commitCurrentPosition()
+{
+    if (!m_point || m_point->pos() == m_crosshairPos) {
+        return;
+    }
+
+    m_point->setPos(m_crosshairPos);
+    emit pointPositionCommitted(m_point);
 }
 
 void MagnifierPopup::updateMagnifier()

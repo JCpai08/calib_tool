@@ -37,6 +37,7 @@ private slots:
     void onIdEditingFinished();
 
 private:
+    void commitCurrentPosition();
     void updateMagnifier();
 
     QLabel m_imageLabel;
